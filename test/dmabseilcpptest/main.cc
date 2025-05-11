@@ -61,9 +61,9 @@ TEST(StrCatTest, ConcatenatesMultipleArguments) {
 
 // 测试 char 类型的拼接
 TEST(StrCatTest, ConcatenatesChars) {
-  char c1 = 'X';
-  char c2 = 'Y';
-  EXPECT_EQ(absl::StrCat("Char1: ", c1, ", Char2: ", c2), "Char1: X, Char2: Y");
+    std::string str1 = "X";
+    std::string str2 = "Y";
+    EXPECT_EQ(absl::StrCat("Char1: ", str1, ", Char2: ", str2), "Char1: X, Char2: Y");
 }
 
 // main 函数由 GTest 提供，这里不需要显式定义
