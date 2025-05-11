@@ -1,69 +1,201 @@
+#include <list>
+#include <map>
 #include <string>
 #include <vector>
 
-#include "absl/strings/str_cat.h"
+#include "absl/strings/ascii.h"
+#include "absl/strings/match.h"
+#include "absl/strings/str_join.h"
+#include "absl/strings/str_replace.h"
+#include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "absl/strings/strip.h"
 #include "gtest.h"
 
-// 测试基本的字符串字面量拼接
-TEST(StrCatTest, ConcatenatesStringLiterals) {
-  EXPECT_EQ(absl::StrCat("Hello, ", "World!"), "Hello, World!");
+// --- Test Suite for absl::StrJoin ---
+class StrJoinTest : public ::testing::Test {};
+
+TEST_F(StrJoinTest, JoinsVectorOfStrings) {
+  std::vector<std::string> v = {"foo", "bar", "baz"};
+  EXPECT_EQ(absl::StrJoin(v, "-"), "foo-bar-baz");
 }
 
-// 测试 std::string对象的拼接
-TEST(StrCatTest, ConcatenatesStdStrings) {
-  std::string s1 = "Test ";
-  std::string s2 = "String";
-  EXPECT_EQ(absl::StrCat(s1, s2), "Test String");
+TEST_F(StrJoinTest, JoinsListOfInts) {
+  std::list<int> l = {1, 2, 3};
+  EXPECT_EQ(absl::StrJoin(l, ", "), "1, 2, 3");
 }
 
-// 测试 absl::string_view 对象的拼接
-TEST(StrCatTest, ConcatenatesStringViews) {
-  absl::string_view sv1 = "View ";
-  absl::string_view sv2 = "One";
-  EXPECT_EQ(absl::StrCat(sv1, sv2), "View One");
+TEST_F(StrJoinTest, JoinsEmptyRange) {
+  std::vector<std::string> empty_v;
+  EXPECT_EQ(absl::StrJoin(empty_v, "-"), "");
 }
 
-// 测试混合类型的拼接 (std::string, const char*, int)
-TEST(StrCatTest, ConcatenatesMixedTypes) {
-  std::string name = "Abseil";
-  int version = 2025;
-  EXPECT_EQ(absl::StrCat("Library: ", name, ", Version: ", version),
-            "Library: Abseil, Version: 2025");
+TEST_F(StrJoinTest, JoinsMap) {
+  std::map<std::string, int> m = {{"one", 1}, {"two", 2}};
+  // Note: Order in map for StrJoin depends on std::map's internal ordering
+  // (sorted by key)
+  std::string joined_map = absl::StrJoin(m, ",", absl::PairFormatter(":"));
+  // Possible outputs: "one:1,two:2" or "two:2,one:1" - for map it's sorted
+  EXPECT_EQ(joined_map, "one:1,two:2");
 }
 
-// 测试与空字符串拼接
-TEST(StrCatTest, ConcatenatesWithEmptyString) {
-  std::string s = "NonEmpty";
-  EXPECT_EQ(absl::StrCat(s, ""), "NonEmpty");
-  EXPECT_EQ(absl::StrCat("", s), "NonEmpty");
-  EXPECT_EQ(absl::StrCat(""), "");  // StrCat with single empty string
-  EXPECT_EQ(absl::StrCat(), "");    // StrCat with no arguments
+// --- Test Suite for absl::StrSplit ---
+class StrSplitTest : public ::testing::Test {};
+
+TEST_F(StrSplitTest, SplitsStringByChar) {
+  absl::string_view sv = "a,b,c";
+  std::vector<std::string> v = absl::StrSplit(sv, ',');
+  ASSERT_EQ(v.size(), 3);
+  EXPECT_EQ(v[0], "a");
+  EXPECT_EQ(v[1], "b");
+  EXPECT_EQ(v[2], "c");
 }
 
-// 测试数字类型的拼接
-TEST(StrCatTest, ConcatenatesNumbers) {
-  int i = 123;
-  double d = 45.67;
-  // Note: absl::StrCat for floating point might produce different
-  // representations than std::to_string or printf, depending on precision and
-  // formatting. For precise float-to-string, absl::StrFormat or
-  // absl::Substitute might be better. Here, we test the basic concatenation.
-  EXPECT_EQ(absl::StrCat("Integer: ", i), "Integer: 123");
-  EXPECT_EQ(absl::StrCat(i, ", Double: ", d),
-            "123, Double: 45.67");  // Default double to string conversion
+TEST_F(StrSplitTest, SplitsStringByString) {
+  std::string s = "alpha--beta--gamma";
+  std::vector<absl::string_view> v = absl::StrSplit(s, "--");
+  ASSERT_EQ(v.size(), 3);
+  EXPECT_EQ(v[0], "alpha");
+  EXPECT_EQ(v[1], "beta");
+  EXPECT_EQ(v[2], "gamma");
 }
 
-// 测试多个参数的拼接
-TEST(StrCatTest, ConcatenatesMultipleArguments) {
-  EXPECT_EQ(absl::StrCat("a", "b", "c", "d", "e"), "abcde");
+TEST_F(StrSplitTest, SplitsWithSkipEmpty) {
+  absl::string_view sv = "a,,b,c,";
+  std::vector<std::string> v = absl::StrSplit(sv, ',', absl::SkipEmpty());
+  ASSERT_EQ(v.size(), 3);
+  EXPECT_EQ(v[0], "a");
+  EXPECT_EQ(v[1], "b");
+  EXPECT_EQ(v[2], "c");
 }
 
-// 测试 char 类型的拼接
-TEST(StrCatTest, ConcatenatesChars) {
-    std::string str1 = "X";
-    std::string str2 = "Y";
-    EXPECT_EQ(absl::StrCat("Char1: ", str1, ", Char2: ", str2), "Char1: X, Char2: Y");
+TEST_F(StrSplitTest, SplitsToSet) {
+  absl::string_view sv = "apple,banana,apple";
+  std::set<std::string> s = absl::StrSplit(sv, ',');
+  ASSERT_EQ(s.size(), 2);
+  EXPECT_TRUE(s.count("apple"));
+  EXPECT_TRUE(s.count("banana"));
 }
 
-// main 函数由 GTest 提供，这里不需要显式定义
+// --- Test Suite for absl::StrReplaceAll ---
+class StrReplaceAllTest : public ::testing::Test {};
+
+TEST_F(StrReplaceAllTest, ReplacesSinglePattern) {
+  std::string s = "the quick brown fox";
+  EXPECT_EQ(absl::StrReplaceAll(s, {{"fox", "cat"}}), "the quick brown cat");
+}
+
+TEST_F(StrReplaceAllTest, ReplacesMultipleOccurrencesOfSamePattern) {
+  std::string s = "banana bandana";
+  std::string r = absl::StrReplaceAll(s, { {"ana", "o"} });
+  EXPECT_EQ(r, "bona bando");  // <-- 修正后的预期结果
+}
+
+TEST_F(StrReplaceAllTest, ReplacesMultipleDifferentPatterns) {
+  std::string s = "hello world example";
+  EXPECT_EQ(absl::StrReplaceAll(s, {{"hello", "hi"}, {"world", "earth"}}),
+            "hi earth example");
+}
+
+TEST_F(StrReplaceAllTest, PatternNotFound) {
+  std::string s = "abcde";
+  EXPECT_EQ(absl::StrReplaceAll(s, {{"xyz", "123"}}), "abcde");
+}
+
+// --- Test Suite for absl::StrContains ---
+class StringContainsTest : public ::testing::Test {};
+
+TEST_F(StringContainsTest, ContainsSubstring) {
+  absl::string_view text = "The quick brown fox";
+  EXPECT_TRUE(absl::StrContains(text, "brown"));
+}
+
+TEST_F(StringContainsTest, DoesNotContainSubstring) {
+  absl::string_view text = "The quick brown fox";
+  EXPECT_FALSE(absl::StrContains(text, "lazy"));
+}
+
+TEST_F(StringContainsTest, ContainsChar) {
+  absl::string_view text = "example";
+  EXPECT_TRUE(absl::StrContains(text, 'm'));
+  EXPECT_FALSE(absl::StrContains(text, 'z'));
+}
+
+// --- Test Suite for absl::StartsWith ---
+class StringStartsWithTest : public ::testing::Test {};
+
+TEST_F(StringStartsWithTest, StartsWithPositive) {
+  EXPECT_TRUE(absl::StartsWith("filename.txt", "filename"));
+}
+
+TEST_F(StringStartsWithTest, StartsWithNegative) {
+  EXPECT_FALSE(absl::StartsWith("filename.txt", "doc"));
+}
+
+TEST_F(StringStartsWithTest, StartsWithEmpty) {
+  EXPECT_TRUE(absl::StartsWith("abc", ""));  // Any string starts with empty
+  EXPECT_TRUE(absl::StartsWith("", ""));     // Empty starts with empty
+  EXPECT_FALSE(
+      absl::StartsWith("", "a"));  // Empty does not start with non-empty
+}
+
+// --- Test Suite for absl::EndsWith ---
+class StringEndsWithTest : public ::testing::Test {};
+
+TEST_F(StringEndsWithTest, EndsWithPositive) {
+  EXPECT_TRUE(absl::EndsWith("filename.txt", ".txt"));
+}
+
+TEST_F(StringEndsWithTest, EndsWithNegative) {
+  EXPECT_FALSE(absl::EndsWith("filename.txt", ".doc"));
+}
+
+TEST_F(StringEndsWithTest, EndsWithEmpty) {
+  EXPECT_TRUE(absl::EndsWith("abc", ""));  // Any string ends with empty
+  EXPECT_TRUE(absl::EndsWith("", ""));     // Empty ends with empty
+  EXPECT_FALSE(absl::EndsWith("", "a"));   // Empty does not end with non-empty
+}
+
+// --- Test Suite for absl::StripPrefix and absl::StripSuffix ---
+class StringStripTest : public ::testing::Test {};
+
+TEST_F(StringStripTest, StripsPrefix) {
+  absl::string_view input = "prefix_value";
+  EXPECT_EQ(absl::StripPrefix(input, "prefix_"), "value");
+}
+
+TEST_F(StringStripTest, StripPrefixNotPresent) {
+  absl::string_view input = "value_noprefix";
+  EXPECT_EQ(absl::StripPrefix(input, "prefix_"), "value_noprefix");
+}
+
+TEST_F(StringStripTest, StripsSuffix) {
+  absl::string_view input = "value_suffix";
+  EXPECT_EQ(absl::StripSuffix(input, "_suffix"), "value");
+}
+
+TEST_F(StringStripTest, StripSuffixNotPresent) {
+  absl::string_view input = "value_nosuffix";
+  EXPECT_EQ(absl::StripSuffix(input, "_suffix"), "value_nosuffix");
+}
+
+// --- Test Suite for absl::AsciiStrToLower and absl::AsciiStrToUpper ---
+class AsciiCaseConversionTest : public ::testing::Test {};
+
+TEST_F(AsciiCaseConversionTest, ConvertsToLower) {
+  EXPECT_EQ(absl::AsciiStrToLower("Hello WORLD 123!"), "hello world 123!");
+}
+
+TEST_F(AsciiCaseConversionTest, ConvertsToUpper) {
+  EXPECT_EQ(absl::AsciiStrToUpper("Hello world 123!"), "HELLO WORLD 123!");
+}
+
+TEST_F(AsciiCaseConversionTest, HandlesEmptyString) {
+  EXPECT_EQ(absl::AsciiStrToLower(""), "");
+  EXPECT_EQ(absl::AsciiStrToUpper(""), "");
+}
+
+TEST_F(AsciiCaseConversionTest, HandlesNonAlphabetic) {
+  EXPECT_EQ(absl::AsciiStrToLower("123 !@#"), "123 !@#");
+  EXPECT_EQ(absl::AsciiStrToUpper("123 !@#"), "123 !@#");
+}
