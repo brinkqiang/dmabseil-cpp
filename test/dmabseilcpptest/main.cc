@@ -1,53 +1,69 @@
-#include <iostream>
 #include <string>
 #include <vector>
 
-// Abseil includes
-#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/span.h"  // For absl::MakeSpan from absl::base or absl::types depending on version
+#include "absl/strings/string_view.h"
+#include "gtest.h"
 
-void demonstrate_str_cat() {
-  std::string s1 = "Hello, ";
-  std::string s2 = "Abseil!";
-  int year = 2025;
-  std::string message = absl::StrCat(s1, s2, " Welcome to ", year);
-  std::cout << "StrCat Demo: " << message << std::endl;
+// 测试基本的字符串字面量拼接
+TEST(StrCatTest, ConcatenatesStringLiterals) {
+  EXPECT_EQ(absl::StrCat("Hello, ", "World!"), "Hello, World!");
 }
 
-void demonstrate_flat_hash_map() {
-  absl::flat_hash_map<std::string, int> word_counts;
-  word_counts["apple"] = 5;
-  word_counts["banana"] = 10;
-  word_counts.insert_or_assign("cherry", 7);
-
-  std::cout << "FlatHashMap Demo:" << std::endl;
-  for (const auto& pair : word_counts) {
-    std::cout << "  " << pair.first << ": " << pair.second << std::endl;
-  }
-
-  if (word_counts.contains("apple")) {
-    std::cout << "  Found 'apple'!" << std::endl;
-  }
+// 测试 std::string对象的拼接
+TEST(StrCatTest, ConcatenatesStdStrings) {
+  std::string s1 = "Test ";
+  std::string s2 = "String";
+  EXPECT_EQ(absl::StrCat(s1, s2), "Test String");
 }
 
-void demonstrate_span() {
-  std::vector<int> nums = {1, 2, 3, 4, 5};
-  absl::Span<const int> num_span = absl::MakeSpan(nums);
-
-  std::cout << "Span Demo (first element): ";
-  if (!num_span.empty()) {
-    std::cout << num_span.front() << std::endl;
-  } else {
-    std::cout << "empty" << std::endl;
-  }
+// 测试 absl::string_view 对象的拼接
+TEST(StrCatTest, ConcatenatesStringViews) {
+  absl::string_view sv1 = "View ";
+  absl::string_view sv2 = "One";
+  EXPECT_EQ(absl::StrCat(sv1, sv2), "View One");
 }
 
-int main() {
-  demonstrate_str_cat();
-  std::cout << "---------------------" << std::endl;
-  demonstrate_flat_hash_map();
-  std::cout << "---------------------" << std::endl;
-  demonstrate_span();
-  return 0;
+// 测试混合类型的拼接 (std::string, const char*, int)
+TEST(StrCatTest, ConcatenatesMixedTypes) {
+  std::string name = "Abseil";
+  int version = 2025;
+  EXPECT_EQ(absl::StrCat("Library: ", name, ", Version: ", version),
+            "Library: Abseil, Version: 2025");
 }
+
+// 测试与空字符串拼接
+TEST(StrCatTest, ConcatenatesWithEmptyString) {
+  std::string s = "NonEmpty";
+  EXPECT_EQ(absl::StrCat(s, ""), "NonEmpty");
+  EXPECT_EQ(absl::StrCat("", s), "NonEmpty");
+  EXPECT_EQ(absl::StrCat(""), "");  // StrCat with single empty string
+  EXPECT_EQ(absl::StrCat(), "");    // StrCat with no arguments
+}
+
+// 测试数字类型的拼接
+TEST(StrCatTest, ConcatenatesNumbers) {
+  int i = 123;
+  double d = 45.67;
+  // Note: absl::StrCat for floating point might produce different
+  // representations than std::to_string or printf, depending on precision and
+  // formatting. For precise float-to-string, absl::StrFormat or
+  // absl::Substitute might be better. Here, we test the basic concatenation.
+  EXPECT_EQ(absl::StrCat("Integer: ", i), "Integer: 123");
+  EXPECT_EQ(absl::StrCat(i, ", Double: ", d),
+            "123, Double: 45.67");  // Default double to string conversion
+}
+
+// 测试多个参数的拼接
+TEST(StrCatTest, ConcatenatesMultipleArguments) {
+  EXPECT_EQ(absl::StrCat("a", "b", "c", "d", "e"), "abcde");
+}
+
+// 测试 char 类型的拼接
+TEST(StrCatTest, ConcatenatesChars) {
+  char c1 = 'X';
+  char c2 = 'Y';
+  EXPECT_EQ(absl::StrCat("Char1: ", c1, ", Char2: ", c2), "Char1: X, Char2: Y");
+}
+
+// main 函数由 GTest 提供，这里不需要显式定义
