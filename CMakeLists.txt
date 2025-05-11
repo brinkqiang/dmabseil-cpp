@@ -288,3 +288,12 @@ if(ABSL_ENABLE_INSTALL)
          RENAME "options.h")
 
 endif()  # ABSL_ENABLE_INSTALL
+
+if(PROJECT_IS_TOP_LEVEL)
+  
+  list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
+  include(cmake/ModuleImport.cmake)
+  include(cmake/ModuleCompileOptions.cmake)
+
+  ExeImport("test" "abseil_dll")
+endif()
